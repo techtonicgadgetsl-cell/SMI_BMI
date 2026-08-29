@@ -372,21 +372,35 @@
                     ]
                 }],
                 generationConfig: {
-                    responseMimeType: "application/json"
+                    responseMimeType: "application/json",
+                    // Extraction is a simple, structured task - turning off/limiting the
+                    // model's "thinking" step removes the biggest source of delay.
+                    thinkingConfig: { thinkingLevel: "minimal", thinkingBudget: 0 },
+                    maxOutputTokens: 4096
                 }
             };
 
-            const models = ["gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash"];
+            // Fastest/lightest models first (they're plenty accurate for structured
+            // data extraction), heavier models only as a fallback if those fail.
+            const models = ["gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-3.7-flash"];
             let lastError = null;
+            const REQUEST_TIMEOUT_MS = 20000; // don't let a single attempt hang forever
 
             try {
                 for (const model of models) {
                     for (let attempt = 0; attempt < 3; attempt++) {
                         try {
-                            const response = await fetch(
-                                `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
-                                { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(requestBody) }
-                            );
+                            const controller = new AbortController();
+                            const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+                            let response;
+                            try {
+                                response = await fetch(
+                                    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
+                                    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(requestBody), signal: controller.signal }
+                                );
+                            } finally {
+                                clearTimeout(timeoutId);
+                            }
 
                             if (!response.ok) {
                                 let detail = '';
@@ -415,8 +429,8 @@
                             document.getElementById('analytics-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
                             return;
                         } catch (error) {
-                            lastError = error;
-                            if (/HTTP (429|500|502|503|504)|Failed to fetch|NetworkError/i.test(String(error?.message || '')) && attempt < 2) {
+                            lastError = error?.name === 'AbortError' ? new Error('Request timed out, retrying...') : error;
+                            if (/HTTP (429|500|502|503|504)|Failed to fetch|NetworkError|timed out/i.test(String(lastError?.message || '')) && attempt < 2) {
                                 await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
                                 continue;
                             }
