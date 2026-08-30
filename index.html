@@ -126,12 +126,39 @@
                         <option value="girls">👧 ගැහැණු ළමුන් (Girls)</option>
                     </select>
                     <select id="date-format" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-base font-medium">
-                        <option value="YYYY.MM.DD">📅 YYYY.MM.DD</option>
-                        <option value="YY.MM.DD">📅 YY.MM.DD</option>
-                        <option value="DD.MM.YYYY">📅 DD.MM.YYYY</option>
-                        <option value="DD.MM.YY">📅 DD.MM.YY</option>
-                        <option value="YYYY.DD.MM">📅 YYYY.DD.MM</option>
-                        <option value="YY.DD.MM">📅 YY.DD.MM</option>
+                        <optgroup label="🌐 ISO 8601 (International Standard)">
+                            <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                        </optgroup>
+                        <optgroup label="📅 Day/Month/Year (UK, EU, Sri Lanka, most of world)">
+                            <option value="DD.MM.YY" selected>DD.MM.YY</option>
+                            <option value="DD.MM.YYYY">DD.MM.YYYY</option>
+                            <option value="DD/MM/YY">DD/MM/YY</option>
+                            <option value="DD/MM/YYYY">DD/MM/YYYY</option>
+                            <option value="DD-MM-YY">DD-MM-YY</option>
+                            <option value="DD-MM-YYYY">DD-MM-YYYY</option>
+                        </optgroup>
+                        <optgroup label="📅 Month/Day/Year (US)">
+                            <option value="MM.DD.YY">MM.DD.YY</option>
+                            <option value="MM.DD.YYYY">MM.DD.YYYY</option>
+                            <option value="MM/DD/YY">MM/DD/YY</option>
+                            <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                            <option value="MM-DD-YY">MM-DD-YY</option>
+                            <option value="MM-DD-YYYY">MM-DD-YYYY</option>
+                        </optgroup>
+                        <optgroup label="📅 Year/Month/Day">
+                            <option value="YY.MM.DD">YY.MM.DD</option>
+                            <option value="YYYY.MM.DD">YYYY.MM.DD</option>
+                            <option value="YY/MM/DD">YY/MM/DD</option>
+                            <option value="YYYY/MM/DD">YYYY/MM/DD</option>
+                            <option value="YY-MM-DD">YY-MM-DD</option>
+                        </optgroup>
+                        <optgroup label="📅 Year/Day/Month">
+                            <option value="YY.DD.MM">YY.DD.MM</option>
+                            <option value="YYYY.DD.MM">YYYY.DD.MM</option>
+                            <option value="YY/DD/MM">YY/DD/MM</option>
+                            <option value="YYYY/DD/MM">YYYY/DD/MM</option>
+                            <option value="YY-DD-MM">YY-DD-MM</option>
+                        </optgroup>
                     </select>
                     <div class="grid grid-cols-2 gap-3">
                         <select id="height-unit" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-base font-medium">
@@ -234,7 +261,10 @@
 
         <div class="app-card rounded-2xl overflow-hidden">
             <div class="p-5 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-                <h2 class="text-sm font-bold text-slate-500 uppercase tracking-wider">4. විශ්ලේෂිත දත්ත</h2>
+                <div>
+                    <h2 class="text-sm font-bold text-slate-500 uppercase tracking-wider">4. විශ්ලේෂිත දත්ත</h2>
+                    <p class="text-[11px] text-emerald-400/70 mt-1">✏️ Height / Weight columns are editable - click a value to correct OCR mistakes, it recalculates instantly.</p>
+                </div>
                 <span id="record-count" class="bg-blue-100 text-blue-700 text-xs font-extrabold px-3 py-1 rounded-full">0</span>
             </div>
             <div class="overflow-x-auto pb-4">
@@ -440,6 +470,39 @@
                 && blank(item.height_cm) && blank(item.weight_kg);
         }
 
+        // Safety net: serial_no is a printed sequential number, so if the model dropped
+        // a genuinely blank row instead of outputting it, there will be a gap in the
+        // sequence (e.g. 1,2,4,5 - missing 3). Detect gaps and re-insert a blank/absent
+        // placeholder at the right position, so a later child's real data can never end
+        // up shifted into an earlier, absent child's row.
+        function fillMissingSerialRows(data) {
+            const bySerial = {};
+            let maxSerial = 0;
+            let numericCount = 0;
+            data.forEach(d => {
+                const n = parseInt(String(d.serial_no).trim(), 10);
+                if (!isNaN(n) && String(n) === String(d.serial_no).trim()) {
+                    bySerial[n] = d;
+                    numericCount++;
+                    if (n > maxSerial) maxSerial = n;
+                }
+            });
+            // Only safe to do this if most rows actually have clean numeric serials
+            if (numericCount < data.length * 0.5 || maxSerial === 0 || maxSerial > data.length * 3) {
+                return data;
+            }
+            const filled = [];
+            for (let i = 1; i <= maxSerial; i++) {
+                filled.push(bySerial[i] || { serial_no: String(i), name: '', dob: '', height_cm: null, weight_kg: null });
+            }
+            // Preserve any rows with non-numeric or out-of-sequence serials at the end
+            data.forEach(d => {
+                const n = parseInt(String(d.serial_no).trim(), 10);
+                if (isNaN(n) || n < 1 || n > maxSerial) filled.push(d);
+            });
+            return filled;
+        }
+
         async function processImageWithGemini() {
             const apiKey = document.getElementById('api-key').value.trim();
             if (!apiKey) { alert("Please enter API Key!"); return; }
@@ -454,16 +517,16 @@
             const heightUnit = document.getElementById('height-unit').value;
             const weightUnit = document.getElementById('weight-unit').value;
 
-            // Build a live example (e.g. "2005.06.17") from the token order in dateFormat,
+            // Build a live example (e.g. "17/06/2005") from the token order + separator in dateFormat,
             // using a sample date so the model sees exactly which digit-group means what.
             const sample = { YYYY: '2005', YY: '05', MM: '06', DD: '17' };
-            const tokens = dateFormat.split('.'); // e.g. ['DD','MM','YYYY']
-            const exampleStr = tokens.map(t => sample[t]).join('.');
+            const exampleStr = dateFormat.replace(/YYYY|YY|MM|DD/g, m => sample[m]);
+            const tokens = dateFormat.split(/[^A-Z]+/).filter(Boolean); // e.g. ['DD','MM','YYYY']
             const tokenNames = { YYYY: '4-digit year', YY: '2-digit year', MM: 'month', DD: 'day' };
             const orderDesc = tokens.map(t => tokenNames[t]).join(', then ');
-            const is2DigitYear = dateFormat.includes('YY') && !dateFormat.includes('YYYY');
+            const is2DigitYear = tokens.includes('YY');
 
-            const dateInstruction = `Date of birth is handwritten in ${dateFormat} format (${orderDesc}) - for example "${exampleStr}" means 17 June 2005. Convert every date to ISO "YYYY-MM-DD" for output.${is2DigitYear ? ` For the 2-digit year, if 20YY would place the birth date in the future relative to today (${new Date().toISOString().slice(0,10)}), use 19YY instead.` : ''}`;
+            const dateInstruction = `Date of birth is handwritten in ${dateFormat} order (${orderDesc}) - for example "${exampleStr}" means 17 June 2005. The exact punctuation between the numbers in the handwriting may differ slightly (".", "-", "/", or a space) - only the ORDER of day/month/year matters, read whatever separator is actually written. Convert every date to ISO "YYYY-MM-DD" for output.${is2DigitYear ? ` For the 2-digit year, if 20YY would place the birth date in the future relative to today (${new Date().toISOString().slice(0,10)}), use 19YY instead.` : ''}`;
 
             const heightInstruction = heightUnit === 'ft'
                 ? `Height is recorded in feet (decimal, e.g. 3.94) - convert it to centimeters for "height_cm" (feet * 30.48).`
@@ -472,7 +535,7 @@
                 ? `Weight is recorded in grams - convert it to kilograms for "weight_kg" (grams / 1000).`
                 : `Weight is recorded in kilograms - output "weight_kg" as-is.`;
 
-            const prompt = `Extract every row from this sheet into a valid JSON array only, one object per printed row (top to bottom, in order).\n\nKeys required for every row: "serial_no" (String), "name" (String), "dob" (String in YYYY-MM-DD format), "height_cm" (Number), "weight_kg" (Number).\n\nPriority: "serial_no" must be read with maximum accuracy - it is a printed sequential number, double-check each digit. For "name", a quick best-effort reading is fine, do not over-analyze handwriting style.\n\n${dateInstruction}\n\n${heightInstruction}\n${weightInstruction}\n\nDo NOT skip or merge blank rows - if a row's serial number is printed but no other data is written, still output that row with empty values, so it can be marked absent later. Do not add markdown, explanations, or extra keys. If a value cannot be read, use an empty string for serial_no/name/dob and null for height_cm/weight_kg.`;
+            const prompt = `Extract every row from this sheet into a valid JSON array only, one object per printed row (top to bottom, in order).\n\nKeys required for every row: "serial_no" (String), "name" (String), "dob" (String in YYYY-MM-DD format), "height_cm" (Number), "weight_kg" (Number).\n\nPriority: "serial_no" must be read with maximum accuracy - it is a printed sequential number, double-check each digit. For "name", a quick best-effort reading is fine, do not over-analyze handwriting style.\n\n${dateInstruction}\n\n${heightInstruction}\n${weightInstruction}\n\nDo NOT skip or merge blank rows. This is critical: the number of objects in your output array MUST exactly equal the number of printed/ruled rows in the register, in the same top-to-bottom order - even if some rows have no handwriting at all. If a row's serial number is printed but nothing else is written, still output an object for it with empty string / null values. Never let one row's data shift into another row's position - each object must correspond to exactly one physical row on the paper. Do not add markdown, explanations, or extra keys. If a value cannot be read, use an empty string for serial_no/name/dob and null for height_cm/weight_kg.`;
 
             // Updated to send dynamic MIME type (image or application/pdf)
             const requestBody = {
@@ -533,7 +596,7 @@
                             try { parsed = JSON.parse(responseText); } catch (e) { throw new Error('Invalid JSON returned.'); }
                             if (!Array.isArray(parsed)) throw new Error('Unexpected data format returned.');
 
-                            extractedGlobalData = parsed;
+                            extractedGlobalData = fillMissingSerialRows(parsed);
                             populateTableAndDropdown();
                             updateCharts();
                             document.getElementById('analytics-section').classList.remove('hidden');
@@ -554,6 +617,15 @@
                 loading.classList.add('hidden');
                 analyzeBtn.disabled = false;
             }
+        }
+
+        // Lets the user manually correct a mis-read Height/Weight value straight in the
+        // table - re-runs BMI/status/chart calculations immediately, no resubmit needed.
+        function editRecordField(index, field, value) {
+            const num = parseFloat(value);
+            extractedGlobalData[index][field] = (value === '' || isNaN(num)) ? null : num;
+            populateTableAndDropdown();
+            updateCharts();
         }
 
         function populateTableAndDropdown() {
@@ -647,8 +719,16 @@
                     <td class="px-4 py-3 font-semibold text-slate-700">${item.serial_no || '-'}</td>
                     <td class="px-4 py-3 font-medium text-slate-900 whitespace-nowrap">${item.name || '-'}</td>
                     <td class="px-4 py-3 text-center font-bold text-blue-600">${ageFormatted}</td>
-                    <td class="px-4 py-3 text-center">${item.height_cm || '-'}</td>
-                    <td class="px-4 py-3 text-center">${item.weight_kg || '-'}</td>
+                    <td class="px-2 py-2 text-center">
+                        <input type="number" step="0.1" inputmode="decimal" value="${item.height_cm ?? ''}" placeholder="-"
+                            onchange="editRecordField(${index}, 'height_cm', this.value)"
+                            class="w-16 text-center bg-transparent border-b border-dashed border-emerald-500/40 focus:border-emerald-400 focus:bg-emerald-500/10 outline-none rounded px-1 py-1 mono" title="Click to correct this value">
+                    </td>
+                    <td class="px-2 py-2 text-center">
+                        <input type="number" step="0.1" inputmode="decimal" value="${item.weight_kg ?? ''}" placeholder="-"
+                            onchange="editRecordField(${index}, 'weight_kg', this.value)"
+                            class="w-16 text-center bg-transparent border-b border-dashed border-emerald-500/40 focus:border-emerald-400 focus:bg-emerald-500/10 outline-none rounded px-1 py-1 mono" title="Click to correct this value">
+                    </td>
                     <td class="px-4 py-3 text-center font-extrabold text-slate-800">${bmi}</td>
                     <td class="px-4 py-3 text-center"><span class="badge ${hfaStatus.cls}">${hfaStatus.label}</span></td>
                     <td class="px-4 py-3 text-center"><span class="badge ${bmiStatus.cls}">${bmiStatus.label}</span></td>
