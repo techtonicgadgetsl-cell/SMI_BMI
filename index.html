@@ -170,6 +170,14 @@
                             <option value="g">⚖️ Weight: g</option>
                         </select>
                     </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Analysis Mode</label>
+                        <div class="grid grid-cols-2 gap-2 p-1 bg-slate-50 border border-slate-200 rounded-xl">
+                            <button type="button" id="mode-fast-btn" onclick="setAnalysisMode('fast')" class="py-2.5 rounded-lg text-sm font-bold transition-colors">⚡ Fast</button>
+                            <button type="button" id="mode-accurate-btn" onclick="setAnalysisMode('accurate')" class="py-2.5 rounded-lg text-sm font-bold transition-colors">🎯 Accurate</button>
+                        </div>
+                        <p id="mode-desc" class="text-[11px] text-slate-400 mt-1.5"></p>
+                    </div>
                 </div>
             </div>
 
@@ -300,6 +308,26 @@
         let extractedGlobalData = [];
         let bmiChartInstance = null;
         let hfaChartInstance = null;
+        let analysisMode = 'accurate'; // 'fast' or 'accurate' - toggled in Section 1
+
+        function setAnalysisMode(mode) {
+            analysisMode = mode;
+            const fastBtn = document.getElementById('mode-fast-btn');
+            const accBtn = document.getElementById('mode-accurate-btn');
+            const desc = document.getElementById('mode-desc');
+            const activeCls = "py-2.5 rounded-lg text-sm font-bold transition-colors bg-gradient-to-r from-cyan-400 to-emerald-400 text-black shadow";
+            const inactiveCls = "py-2.5 rounded-lg text-sm font-bold transition-colors text-slate-400";
+            if (mode === 'fast') {
+                fastBtn.className = activeCls;
+                accBtn.className = inactiveCls;
+                desc.textContent = "⚡ Quicker results - good for clear, neat handwriting.";
+            } else {
+                accBtn.className = activeCls;
+                fastBtn.className = inactiveCls;
+                desc.textContent = "🎯 Slower, more careful reading - best for messy handwriting & accurate DOB.";
+            }
+        }
+        setAnalysisMode('accurate');
 
         // Dark "hacker terminal" theme defaults for Chart.js (must run before any chart is created)
         if (typeof Chart !== 'undefined') {
@@ -354,11 +382,22 @@
                     img.onload = function() {
                         const canvas = document.createElement('canvas');
                         let width = img.width; let height = img.height;
-                        if (width > 1200) { height *= 1200 / width; width = 1200; }
+                        // Fast mode trades some legibility of small handwriting (like DOB) for
+                        // a smaller/quicker upload; Accurate mode keeps more resolution/quality.
+                        const MAX_DIM = analysisMode === 'fast' ? 1200 : 2200;
+                        const jpegQuality = analysisMode === 'fast' ? 0.7 : 0.92;
+                        const longSide = Math.max(width, height);
+                        if (longSide > MAX_DIM) {
+                            const scale = MAX_DIM / longSide;
+                            width = Math.round(width * scale);
+                            height = Math.round(height * scale);
+                        }
                         canvas.width = width; canvas.height = height;
                         const ctx = canvas.getContext('2d');
+                        ctx.imageSmoothingEnabled = true;
+                        ctx.imageSmoothingQuality = 'high';
                         ctx.drawImage(img, 0, 0, width, height);
-                        compressedBase64 = canvas.toDataURL('image/jpeg', 0.7).split(',')[1];
+                        compressedBase64 = canvas.toDataURL('image/jpeg', jpegQuality).split(',')[1];
                         imageMimeType = "image/jpeg"; // Update MIME if converted
                     }
                 }
@@ -537,7 +576,7 @@
                 ? `Weight is recorded in grams - convert it to kilograms for "weight_kg" (grams / 1000).`
                 : `Weight is recorded in kilograms - output "weight_kg" as-is.`;
 
-            const prompt = `Extract every row from this sheet into a valid JSON array only, one object per printed row (top to bottom, in order).\n\nKeys required for every row: "serial_no" (String), "name" (String), "dob" (String in YYYY-MM-DD format), "height_cm" (Number), "weight_kg" (Number).\n\nPriority: "serial_no" and "dob" must both be read with maximum accuracy - double-check every digit against the handwriting before finalizing. A wrong "dob" throws off the calculated age and pushes the student's data point off the growth chart entirely, so treat each digit of the date as carefully as the serial number: if a digit is ambiguous (e.g. could be a 1 or a 7, a 0 or a 6, a 3 or an 8), look at the stroke shape closely and pick the single most likely reading rather than guessing quickly. For "name", a quick best-effort reading is fine, do not over-analyze handwriting style.\n\n${dateInstruction}\n\n${heightInstruction}\n${weightInstruction}\n\nDo NOT skip or merge blank rows. This is critical: the number of objects in your output array MUST exactly equal the number of printed/ruled rows in the register, in the same top-to-bottom order - even if some rows have no handwriting at all. If a row's serial number is printed but nothing else is written, still output an object for it with empty string / null values. Never let one row's data shift into another row's position - each object must correspond to exactly one physical row on the paper. Do not add markdown, explanations, or extra keys. If a value cannot be read, use an empty string for serial_no/name/dob and null for height_cm/weight_kg.`;
+            const prompt = `Extract every row from this sheet into a valid JSON array only, one object per printed row (top to bottom, in order).\n\nKeys required for every row: "serial_no" (String), "name" (String), "dob" (String in YYYY-MM-DD format), "height_cm" (Number), "weight_kg" (Number).\n\nPriority: "serial_no" and "dob" must both be read with maximum accuracy - double-check every digit against the handwriting before finalizing. A wrong "dob" throws off the calculated age and pushes the student's data point off the growth chart entirely, so treat each digit of the date as carefully as the serial number. Work column by column for the date-of-birth field: look at ALL the dates in that column together first to learn this writer's personal shapes for each digit (0-9), then read each individual date using that reference - this resolves most ambiguous digits (e.g. 1 vs 7, 0 vs 6, 3 vs 8, 5 vs 6) far more reliably than reading each date in isolation. If a specific digit is still genuinely illegible after this cross-check, leave that row's "dob" as an empty string rather than guessing - a blank is safer than a wrong date. For "name", a quick best-effort reading is fine, do not over-analyze handwriting style.\n\n${dateInstruction}\n\n${heightInstruction}\n${weightInstruction}\n\nDo NOT skip or merge blank rows. This is critical: the number of objects in your output array MUST exactly equal the number of printed/ruled rows in the register, in the same top-to-bottom order - even if some rows have no handwriting at all. If a row's serial number is printed but nothing else is written, still output an object for it with empty string / null values. Never let one row's data shift into another row's position - each object must correspond to exactly one physical row on the paper. Do not add markdown, explanations, or extra keys. If a value cannot be read, use an empty string for serial_no/name/dob and null for height_cm/weight_kg.`;
 
             // Updated to send dynamic MIME type (image or application/pdf)
             const requestBody = {
@@ -551,14 +590,17 @@
                     responseMimeType: "application/json",
                     // Extraction is a simple, structured task - turning off/limiting the
                     // model's "thinking" step removes the biggest source of delay.
-                    thinkingConfig: { thinkingLevel: "minimal" },
+                    thinkingConfig: { thinkingLevel: analysisMode === 'fast' ? "minimal" : "low" },
                     maxOutputTokens: 4096
                 }
             };
 
             // Fastest/lightest models first (they're plenty accurate for structured
             // data extraction), heavier models only as a fallback if those fail.
-            const models = ["gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-3.7-flash"];
+            // Fast mode: lightest/quickest model first. Accurate mode: most capable model first.
+            const models = analysisMode === 'fast'
+                ? ["gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-3.7-flash"]
+                : ["gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite"];
             let lastError = null;
             const REQUEST_TIMEOUT_MS = 20000; // don't let a single attempt hang forever
 
