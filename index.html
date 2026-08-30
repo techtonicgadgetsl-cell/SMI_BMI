@@ -228,6 +228,8 @@
                 </select>
             </div>
 
+            <div id="chart-outlier-note" class="hidden mb-4 text-xs font-semibold text-amber-300 bg-amber-500/10 border border-amber-400/30 rounded-xl px-4 py-2.5"></div>
+
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 
                 <div id="bmi-chart-container" class="border border-slate-100 p-4 rounded-xl bg-slate-50 relative transition-all duration-300 flex flex-col">
@@ -263,7 +265,7 @@
             <div class="p-5 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
                 <div>
                     <h2 class="text-sm font-bold text-slate-500 uppercase tracking-wider">4. විශ්ලේෂිත දත්ත</h2>
-                    <p class="text-[11px] text-emerald-400/70 mt-1">✏️ Height / Weight columns are editable - click a value to correct OCR mistakes, it recalculates instantly.</p>
+                    <p class="text-[11px] text-emerald-400/70 mt-1">✏️ DOB, Height & Weight columns are editable - click a value to correct OCR mistakes, it recalculates instantly.</p>
                 </div>
                 <span id="record-count" class="bg-blue-100 text-blue-700 text-xs font-extrabold px-3 py-1 rounded-full">0</span>
             </div>
@@ -273,7 +275,7 @@
                         <tr>
                             <th class="px-4 py-3 font-bold">No.</th>
                             <th class="px-4 py-3 font-bold">Name</th>
-                            <th class="px-4 py-3 font-bold text-center">Age (Y.M)</th>
+                            <th class="px-4 py-3 font-bold text-center">DOB / Age (Y.M)</th>
                             <th class="px-4 py-3 font-bold text-center">Height</th>
                             <th class="px-4 py-3 font-bold text-center">Weight</th>
                             <th class="px-4 py-3 font-bold text-center">BMI</th>
@@ -535,7 +537,7 @@
                 ? `Weight is recorded in grams - convert it to kilograms for "weight_kg" (grams / 1000).`
                 : `Weight is recorded in kilograms - output "weight_kg" as-is.`;
 
-            const prompt = `Extract every row from this sheet into a valid JSON array only, one object per printed row (top to bottom, in order).\n\nKeys required for every row: "serial_no" (String), "name" (String), "dob" (String in YYYY-MM-DD format), "height_cm" (Number), "weight_kg" (Number).\n\nPriority: "serial_no" must be read with maximum accuracy - it is a printed sequential number, double-check each digit. For "name", a quick best-effort reading is fine, do not over-analyze handwriting style.\n\n${dateInstruction}\n\n${heightInstruction}\n${weightInstruction}\n\nDo NOT skip or merge blank rows. This is critical: the number of objects in your output array MUST exactly equal the number of printed/ruled rows in the register, in the same top-to-bottom order - even if some rows have no handwriting at all. If a row's serial number is printed but nothing else is written, still output an object for it with empty string / null values. Never let one row's data shift into another row's position - each object must correspond to exactly one physical row on the paper. Do not add markdown, explanations, or extra keys. If a value cannot be read, use an empty string for serial_no/name/dob and null for height_cm/weight_kg.`;
+            const prompt = `Extract every row from this sheet into a valid JSON array only, one object per printed row (top to bottom, in order).\n\nKeys required for every row: "serial_no" (String), "name" (String), "dob" (String in YYYY-MM-DD format), "height_cm" (Number), "weight_kg" (Number).\n\nPriority: "serial_no" and "dob" must both be read with maximum accuracy - double-check every digit against the handwriting before finalizing. A wrong "dob" throws off the calculated age and pushes the student's data point off the growth chart entirely, so treat each digit of the date as carefully as the serial number: if a digit is ambiguous (e.g. could be a 1 or a 7, a 0 or a 6, a 3 or an 8), look at the stroke shape closely and pick the single most likely reading rather than guessing quickly. For "name", a quick best-effort reading is fine, do not over-analyze handwriting style.\n\n${dateInstruction}\n\n${heightInstruction}\n${weightInstruction}\n\nDo NOT skip or merge blank rows. This is critical: the number of objects in your output array MUST exactly equal the number of printed/ruled rows in the register, in the same top-to-bottom order - even if some rows have no handwriting at all. If a row's serial number is printed but nothing else is written, still output an object for it with empty string / null values. Never let one row's data shift into another row's position - each object must correspond to exactly one physical row on the paper. Do not add markdown, explanations, or extra keys. If a value cannot be read, use an empty string for serial_no/name/dob and null for height_cm/weight_kg.`;
 
             // Updated to send dynamic MIME type (image or application/pdf)
             const requestBody = {
@@ -622,8 +624,12 @@
         // Lets the user manually correct a mis-read Height/Weight value straight in the
         // table - re-runs BMI/status/chart calculations immediately, no resubmit needed.
         function editRecordField(index, field, value) {
-            const num = parseFloat(value);
-            extractedGlobalData[index][field] = (value === '' || isNaN(num)) ? null : num;
+            if (field === 'dob') {
+                extractedGlobalData[index][field] = value || '';
+            } else {
+                const num = parseFloat(value);
+                extractedGlobalData[index][field] = (value === '' || isNaN(num)) ? null : num;
+            }
             populateTableAndDropdown();
             updateCharts();
         }
@@ -718,7 +724,11 @@
                 tr.innerHTML = `
                     <td class="px-4 py-3 font-semibold text-slate-700">${item.serial_no || '-'}</td>
                     <td class="px-4 py-3 font-medium text-slate-900 whitespace-nowrap">${item.name || '-'}</td>
-                    <td class="px-4 py-3 text-center font-bold text-blue-600">${ageFormatted}</td>
+                    <td class="px-2 py-2 text-center">
+                        <input type="date" value="${item.dob || ''}" onchange="editRecordField(${index}, 'dob', this.value)"
+                            class="w-full max-w-[125px] mx-auto block text-center bg-transparent border-b border-dashed border-emerald-500/40 focus:border-emerald-400 focus:bg-emerald-500/10 outline-none rounded px-1 py-1 mono text-[11px]" title="Click to correct this student's date of birth">
+                        <div class="text-[10px] text-blue-400 font-bold mt-1">${ageFormatted}</div>
+                    </td>
                     <td class="px-2 py-2 text-center">
                         <input type="number" step="0.1" inputmode="decimal" value="${item.height_cm ?? ''}" placeholder="-"
                             onchange="editRecordField(${index}, 'height_cm', this.value)"
@@ -780,16 +790,27 @@
                 }
             });
 
-            let studentBmiPoints = [], studentHfaPoints = [];
+            const minRefAge = Number(ageKeys[0]);
+            const maxRefAge = Number(ageKeys[ageKeys.length - 1]);
+
+            let studentBmiPoints = [], studentHfaPoints = [], outOfRangeCount = 0;
             extractedGlobalData.forEach((item, index) => {
                 if(filterValue !== 'ALL' && index.toString() !== filterValue) return;
                 const ageMonths = calculateAgeInMonths(item.dob);
                 if(ageMonths !== null && item.weight_kg && item.height_cm) {
+                    if (ageMonths < minRefAge || ageMonths > maxRefAge) { outOfRangeCount++; return; }
                     const heightM = item.height_cm / 100;
                     studentBmiPoints.push({ x: ageMonths, y: parseFloat((item.weight_kg / (heightM * heightM)).toFixed(2)), name: item.name });
                     studentHfaPoints.push({ x: ageMonths, y: parseFloat(item.height_cm), name: item.name });
                 }
             });
+            const outOfRangeNote = document.getElementById('chart-outlier-note');
+            if (outOfRangeNote) {
+                outOfRangeNote.classList.toggle('hidden', outOfRangeCount === 0);
+                outOfRangeNote.textContent = outOfRangeCount > 0
+                    ? `⚠ ${outOfRangeCount} student(s) hidden from the charts - their DOB gives an age outside the WHO reference range. Correct the DOB in the "විශ්ලේෂිත දත්ත" table below.`
+                    : '';
+            }
 
             const pointSize = filterValue === 'ALL' ? (window.innerWidth < 768 ? 4 : 5) : 10;
 
@@ -799,6 +820,8 @@
                 scales: { 
                     x: { 
                         type: 'linear', 
+                        min: minRefAge,
+                        max: maxRefAge,
                         title: { display: true, text: 'Age (Months)' },
                         ticks: { callback: function(value) { return Math.floor(value/12) + '.' + (value%12) + 'y'; } }
                     }, 
