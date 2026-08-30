@@ -52,6 +52,7 @@
         .badge-danger { background-color: #fee2e2; color: #991b1b; }
         .badge-severe { background-color: #dc2626; color: #ffffff; }
         .badge-pending { background-color: #e2e8f0; color: #475569; }
+        .badge-absent { background-color: #f1f5f9; color: #64748b; font-style: italic; }
         .glass-header { background: rgba(255, 255, 255, 0.82); backdrop-filter: blur(16px); border-bottom: 1px solid rgba(99,102,241,.10); }
         .chart-wrapper { min-height: 260px; }
         @media (max-width: 640px) {
@@ -351,6 +352,14 @@
             return { label: 'Normal', cls: 'badge-normal' };
         }
 
+        // A row where serial_no, name, dob, height AND weight are ALL blank means
+        // nothing was written for that student that day -> treat as Absent.
+        function isAbsentRecord(item) {
+            const blank = v => v === null || v === undefined || String(v).trim() === '';
+            return blank(item.serial_no) && blank(item.name) && blank(item.dob)
+                && blank(item.height_cm) && blank(item.weight_kg);
+        }
+
         async function processImageWithGemini() {
             const apiKey = document.getElementById('api-key').value.trim();
             if (!apiKey) { alert("Please enter API Key!"); return; }
@@ -361,7 +370,7 @@
             loading.classList.remove('hidden');
             analyzeBtn.disabled = true;
 
-            const prompt = `Extract all handwritten rows from this sheet into a valid JSON array only.\n\nKeys required for every row: "serial_no" (String), "name" (String), "dob" (String in YYYY-MM-DD format), "height_cm" (Number), "weight_kg" (Number).\nIgnore empty rows. Do not add markdown, explanations, or extra keys. If a value cannot be read, use an empty string for serial_no/name/dob and null for height_cm/weight_kg.`;
+            const prompt = `Extract every row from this sheet into a valid JSON array only, one object per printed row (top to bottom, in order).\n\nKeys required for every row: "serial_no" (String), "name" (String), "dob" (String in YYYY-MM-DD format), "height_cm" (Number), "weight_kg" (Number).\n\nPriority: "serial_no" must be read with maximum accuracy - it is a printed sequential number, double-check each digit. For "name", a quick best-effort reading is fine, do not over-analyze handwriting style.\n\nDo NOT skip or merge blank rows - if a row's serial number is printed but no other data is written, still output that row with empty values, so it can be marked absent later. Do not add markdown, explanations, or extra keys. If a value cannot be read, use an empty string for serial_no/name/dob and null for height_cm/weight_kg.`;
 
             // Updated to send dynamic MIME type (image or application/pdf)
             const requestBody = {
@@ -375,7 +384,7 @@
                     responseMimeType: "application/json",
                     // Extraction is a simple, structured task - turning off/limiting the
                     // model's "thinking" step removes the biggest source of delay.
-                    thinkingConfig: { thinkingLevel: "minimal", thinkingBudget: 0 },
+                    thinkingConfig: { thinkingLevel: "minimal" },
                     maxOutputTokens: 4096
                 }
             };
@@ -453,7 +462,27 @@
             tbody.innerHTML = ""; 
             filterDropdown.innerHTML = '<option value="ALL">📊 සියලුම ළමුන් (All Students)</option>';
 
+            let absentCount = 0;
+
             extractedGlobalData.forEach((item, index) => {
+                if (isAbsentRecord(item)) {
+                    absentCount++;
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-slate-50 transition-colors opacity-70";
+                    tr.innerHTML = `
+                        <td class="px-4 py-3 font-semibold text-slate-400">${index + 1}</td>
+                        <td class="px-4 py-3 font-medium text-slate-400 italic" colspan="4">— No data written —</td>
+                        <td class="px-4 py-3 text-center text-slate-400">-</td>
+                        <td class="px-4 py-3 text-center"><span class="badge badge-absent">Absent</span></td>
+                        <td class="px-4 py-3 text-center"><span class="badge badge-absent">Absent</span></td>
+                        <td class="px-4 py-3 text-center text-xs text-slate-400 border-l border-slate-200 bg-blue-50/30">-</td>
+                        <td class="px-4 py-3 text-center text-xs text-slate-400 bg-blue-50/30">-</td>
+                        <td class="px-4 py-3 text-center bg-blue-50/30">-</td>
+                    `;
+                    tbody.appendChild(tr);
+                    return; // skip BMI/HFA computation and dropdown entry for absent rows
+                }
+
                 const ageMonths = calculateAgeInMonths(item.dob);
                 let ageFormatted = ageMonths !== null ? `${Math.floor(ageMonths/12)}.${ageMonths%12}` : '-';
                 
@@ -527,7 +556,9 @@
                 `;
                 tbody.appendChild(tr);
             });
-            document.getElementById('record-count').innerText = extractedGlobalData.length;
+            document.getElementById('record-count').innerText = absentCount > 0
+                ? `${extractedGlobalData.length} (${absentCount} absent)`
+                : extractedGlobalData.length;
         }
 
         function updateCharts() {
