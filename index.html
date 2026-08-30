@@ -221,9 +221,14 @@
                     </button>
                 </div>
 
-                <div id="loading" class="hidden mt-3 flex justify-center items-center space-x-3 bg-blue-50 p-3 rounded-xl text-sm">
-                    <div class="loader rounded-full border-4 border-t-4 border-blue-400 h-5 w-5"></div>
-                    <span class="text-blue-700 font-semibold">Processing...</span>
+                <div id="loading" class="hidden mt-3 bg-blue-50 p-4 rounded-xl">
+                    <div class="flex justify-between items-center mb-2">
+                        <span id="progress-stage" class="text-blue-700 font-semibold text-sm">Preparing...</span>
+                        <span id="progress-pct" class="text-blue-700 font-extrabold text-sm mono">0%</span>
+                    </div>
+                    <div class="w-full h-2.5 bg-blue-100 rounded-full overflow-hidden">
+                        <div id="progress-bar" class="h-full rounded-full transition-all duration-300 ease-out" style="width: 0%; background: linear-gradient(90deg, #06b6d4, #39ff88); box-shadow: 0 0 10px rgba(57,255,136,.5);"></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -544,6 +549,35 @@
             return filled;
         }
 
+        // --- Progress bar helpers (shows a live % + stage label while Gemini scans) ---
+        let progressInterval = null;
+        let currentProgressPct = 0;
+
+        function setProgress(pct, label) {
+            currentProgressPct = Math.min(100, Math.max(0, pct));
+            const bar = document.getElementById('progress-bar');
+            const pctEl = document.getElementById('progress-pct');
+            const stageEl = document.getElementById('progress-stage');
+            if (bar) bar.style.width = currentProgressPct + '%';
+            if (pctEl) pctEl.textContent = Math.round(currentProgressPct) + '%';
+            if (stageEl && label) stageEl.textContent = label;
+        }
+
+        // Eases the bar toward capPct without ever quite reaching it - since we can't
+        // know exactly how long the Gemini call will take, this gives an honest sense
+        // of "still working" rather than a fake linear fill.
+        function startProgressCreep(capPct, label) {
+            stopProgressCreep();
+            setProgress(currentProgressPct, label);
+            progressInterval = setInterval(() => {
+                currentProgressPct += (capPct - currentProgressPct) * 0.08;
+                setProgress(currentProgressPct, label);
+            }, 200);
+        }
+        function stopProgressCreep() {
+            if (progressInterval) { clearInterval(progressInterval); progressInterval = null; }
+        }
+
         async function processImageWithGemini() {
             const apiKey = document.getElementById('api-key').value.trim();
             if (!apiKey) { alert("Please enter API Key!"); return; }
@@ -553,6 +587,7 @@
             const analyzeBtn = document.getElementById('analyze-btn');
             loading.classList.remove('hidden');
             analyzeBtn.disabled = true;
+            setProgress(4, 'Preparing image...');
 
             const dateFormat = document.getElementById('date-format').value;
             const heightUnit = document.getElementById('height-unit').value;
@@ -603,9 +638,12 @@
                 : ["gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite"];
             let lastError = null;
             const REQUEST_TIMEOUT_MS = 20000; // don't let a single attempt hang forever
+            const stageCaps = [58, 76, 90]; // progress cap while trying each fallback model
 
             try {
-                for (const model of models) {
+                for (let mIdx = 0; mIdx < models.length; mIdx++) {
+                    const model = models[mIdx];
+                    startProgressCreep(stageCaps[mIdx] ?? 90, `Scanning with Gemini AI (${mIdx + 1}/${models.length})...`);
                     for (let attempt = 0; attempt < 3; attempt++) {
                         try {
                             const controller = new AbortController();
@@ -640,11 +678,16 @@
                             try { parsed = JSON.parse(responseText); } catch (e) { throw new Error('Invalid JSON returned.'); }
                             if (!Array.isArray(parsed)) throw new Error('Unexpected data format returned.');
 
+                            stopProgressCreep();
+                            setProgress(92, 'Parsing extracted data...');
                             extractedGlobalData = fillMissingSerialRows(parsed);
+                            setProgress(96, 'Building table & charts...');
                             populateTableAndDropdown();
                             updateCharts();
                             document.getElementById('analytics-section').classList.remove('hidden');
                             document.getElementById('analytics-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            setProgress(100, 'Done ✓');
+                            await new Promise(r => setTimeout(r, 450));
                             return;
                         } catch (error) {
                             lastError = error?.name === 'AbortError' ? new Error('Request timed out, retrying...') : error;
@@ -658,8 +701,10 @@
                 }
                 alert('Error:\n' + (lastError?.message || 'Unknown Gemini API error.'));
             } finally {
+                stopProgressCreep();
                 loading.classList.add('hidden');
                 analyzeBtn.disabled = false;
+                setProgress(0, 'Preparing...');
             }
         }
 
