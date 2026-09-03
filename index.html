@@ -476,6 +476,11 @@
             let months = (today.getFullYear() - dob.getFullYear()) * 12;
             months -= dob.getMonth();
             months += today.getMonth();
+            // A month only "completes" once we reach the same day-of-month as the
+            // birth date. Without this check, e.g. DOB 2015-09-10 evaluated on
+            // 2026-09-03 was counted as a full extra month even though the
+            // student's birthday hasn't happened yet this month.
+            if (today.getDate() < dob.getDate()) months -= 1;
             return months <= 0 ? 0 : months;
         }
 
