@@ -3,89 +3,78 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#020806">
+    <meta name="theme-color" content="#f4f7f6">
     <title>SMI Pro - Fullscreen WHO Charts</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
         :root {
-            --primary: #22d3ee;
-            --primary-dark: #06b6d4;
-            --accent: #39ff88;
-            --surface: rgba(6,14,12,.88);
+            --primary: #0e7c74;
+            --primary-dark: #0a5f58;
+            --accent: #c7862b;
+            --surface: #ffffff;
+            --bg: #f4f7f6;
+            --border: #dfe7e4;
+            --ink: #16231f;
+            --ink-soft: #52645e;
         }
         * { box-sizing: border-box; }
         html { scroll-behavior: smooth; }
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
-            background:
-                radial-gradient(circle at 8% 0%, rgba(34,211,238,.10), transparent 34%),
-                radial-gradient(circle at 92% 8%, rgba(57,255,136,.08), transparent 32%),
-                repeating-linear-gradient(0deg, rgba(57,255,136,.025) 0px, rgba(57,255,136,.025) 1px, transparent 1px, transparent 26px),
-                repeating-linear-gradient(90deg, rgba(57,255,136,.025) 0px, rgba(57,255,136,.025) 1px, transparent 1px, transparent 26px),
-                linear-gradient(180deg, #030807 0%, #020504 100%);
+            background: var(--bg);
             min-height: 100dvh;
             -webkit-tap-highlight-color: transparent;
-            color: #d1fae5;
+            color: var(--ink);
         }
         ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: #020504; }
-        ::-webkit-scrollbar-thumb { background: rgba(57,255,136,.35); border-radius: 4px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: rgba(14,124,116,.3); border-radius: 4px; }
         button, input, select { -webkit-appearance: none; }
         button { touch-action: manipulation; }
         .mono { font-family: 'JetBrains Mono', monospace; }
         .app-card {
             background: var(--surface);
-            border: 1px solid rgba(57,255,136,.22);
-            box-shadow: 0 0 0 1px rgba(34,211,238,.04), 0 12px 35px rgba(0,0,0,.55), 0 0 24px rgba(57,255,136,.05);
-            backdrop-filter: blur(14px);
+            border: 1px solid var(--border);
+            box-shadow: 0 1px 2px rgba(22,35,31,.04), 0 8px 24px rgba(22,35,31,.06);
         }
-        .app-card:hover { box-shadow: 0 0 0 1px rgba(34,211,238,.08), 0 16px 42px rgba(0,0,0,.6), 0 0 28px rgba(57,255,136,.1); }
+        .app-card:hover { box-shadow: 0 1px 2px rgba(22,35,31,.05), 0 12px 30px rgba(22,35,31,.09); }
         .primary-btn {
-            background: linear-gradient(135deg, #06b6d4 0%, #22d3ee 45%, #39ff88 100%);
-            box-shadow: 0 0 18px rgba(57,255,136,.35), 0 10px 24px rgba(6,182,212,.25);
-            color: #021a10 !important;
-            letter-spacing: .02em;
+            background: var(--primary);
+            box-shadow: 0 4px 14px rgba(14,124,116,.28);
+            color: #ffffff !important;
+            letter-spacing: .01em;
         }
+        .primary-btn:hover { background: var(--primary-dark); }
         .primary-btn:active { transform: translateY(1px) scale(.995); }
         .scan-box {
-            background: linear-gradient(135deg, rgba(6,20,17,.9), rgba(4,14,20,.9));
-            border-color: rgba(34,211,238,.4);
+            background: #f8fbfa;
+            border-color: rgba(14,124,116,.35);
         }
-        .loader { border-top-color: #39ff88; -webkit-animation: spinner 1s linear infinite; animation: spinner 1s linear infinite; }
+        .loader { border-top-color: var(--primary); -webkit-animation: spinner 1s linear infinite; animation: spinner 1s linear infinite; }
         @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .badge { padding: 0.35rem 0.6rem; border-radius: 0.5rem; font-size: 0.75rem; font-weight: 700; display: inline-block; white-space: nowrap; border: 1px solid transparent;}
-        .badge-normal { background-color: rgba(57,255,136,.12); color: #6ef5a5; border-color: rgba(57,255,136,.35); }
-        .badge-warning { background-color: rgba(250,204,21,.12); color: #fde68a; border-color: rgba(250,204,21,.35); }
-        .badge-danger { background-color: rgba(248,113,113,.12); color: #fca5a5; border-color: rgba(248,113,113,.35); }
-        .badge-severe { background-color: #dc2626; color: #fff1f1; box-shadow: 0 0 10px rgba(220,38,38,.5); }
-        .badge-pending { background-color: rgba(148,163,184,.12); color: #94a3b8; border-color: rgba(148,163,184,.25); }
-        .badge-absent { background-color: rgba(100,116,139,.10); color: #64748b; font-style: italic; border-color: rgba(100,116,139,.2); }
-        .glass-header { background: rgba(2,8,7,0.85); backdrop-filter: blur(16px); border-bottom: 1px solid rgba(57,255,136,.18); box-shadow: 0 1px 24px rgba(57,255,136,.06); }
+        .badge-normal { background-color: #dcfce7; color: #166534; border-color: #86efac; }
+        .badge-warning { background-color: #fef3c7; color: #92400e; border-color: #fcd34d; }
+        .badge-danger { background-color: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
+        .badge-severe { background-color: #dc2626; color: #fff5f5; box-shadow: 0 0 0 1px rgba(220,38,38,.15); }
+        .badge-pending { background-color: #f1f5f4; color: #64748b; border-color: #e2e8e6; }
+        .badge-absent { background-color: #f1f5f4; color: #94a3b8; font-style: italic; border-color: #e2e8e6; }
+        .glass-header { background: rgba(255,255,255,0.92); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); box-shadow: 0 1px 3px rgba(22,35,31,.05); }
         .chart-wrapper { min-height: 260px; }
 
-        /* --- Dark theme overrides for the light-theme Tailwind utility classes still used inline --- */
-        .bg-white, .bg-slate-50, .bg-slate-100 { background-color: #060f0d !important; }
-        .border-slate-100, .border-slate-200 { border-color: rgba(57,255,136,.18) !important; }
-        .text-slate-400 { color: rgba(148,197,178,.55) !important; }
-        .text-slate-500 { color: rgba(148,197,178,.75) !important; }
-        .text-slate-600 { color: #a7f3d0 !important; }
-        .text-slate-700, .text-slate-800, .text-slate-900 { color: #ecfdf5 !important; }
-        .bg-blue-50, .bg-blue-50\/30, .bg-blue-50\/50 { background-color: rgba(34,211,238,.06) !important; }
-        .bg-blue-100 { background-color: rgba(34,211,238,.14) !important; }
-        .text-blue-600, .text-blue-700, .text-blue-800 { color: #22d3ee !important; }
-        .border-blue-100, .border-blue-200, .border-blue-400 { border-color: rgba(34,211,238,.35) !important; }
-        .hover\:bg-blue-50:hover { background-color: rgba(34,211,238,.12) !important; }
-        .focus\:ring-blue-500:focus { --tw-ring-color: rgba(34,211,238,.5) !important; }
-        .hover\:bg-slate-50:hover, .hover\:bg-slate-100:hover, .hover\:bg-slate-200:hover { background-color: rgba(57,255,136,.08) !important; }
-        .bg-red-100 { background-color: rgba(248,113,113,.12) !important; }
-        .border-red-200 { border-color: rgba(248,113,113,.35) !important; }
-        .text-red-600, .text-red-700 { color: #fca5a5 !important; }
-        .hover\:bg-red-200:hover { background-color: rgba(248,113,113,.2) !important; }
-        table { color: #a7f3d0; }
-        input, select { color: #ecfdf5; }
-        input::placeholder { color: rgba(148,197,178,.5); }
+        /* Keep the many inline Tailwind "blue" utility classes on one teal identity,
+           rather than mixing two unrelated accent hues across the page. */
+        .bg-blue-50, .bg-blue-50\/30, .bg-blue-50\/50 { background-color: #eef6f5 !important; }
+        .bg-blue-100 { background-color: #dcefec !important; }
+        .text-blue-400 { color: #4f9d94 !important; }
+        .text-blue-600, .text-blue-700, .text-blue-800 { color: var(--primary-dark) !important; }
+        .border-blue-100, .border-blue-200 { border-color: #cbe3df !important; }
+        .hover\:bg-blue-50:hover { background-color: #e3f1ef !important; }
+        .hover\:bg-blue-200:hover { background-color: #cfe6e2 !important; }
+        .focus\:ring-blue-500:focus { --tw-ring-color: rgba(14,124,116,.4) !important; }
+
         @media (max-width: 640px) {
             body { padding-bottom: 12px; }
             .chart-wrapper { min-height: 280px; }
@@ -109,8 +98,8 @@
     <header class="glass-header sticky top-0 z-40 px-4 py-3 flex items-center justify-center">
         <div class="w-full max-w-7xl flex items-center justify-center">
             <div class="text-center">
-                <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 mono">SMI <span class="bg-gradient-to-r from-cyan-400 to-emerald-400 bg-clip-text text-transparent">PRO</span></h1>
-                <p class="text-[10px] sm:text-xs font-semibold text-emerald-400/70 tracking-[.18em] uppercase mono">&gt; who_growth_analysis<span class="animate-pulse">_</span></p>
+                <h1 class="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900">SMI <span style="color: var(--primary);">Pro</span></h1>
+                <p class="text-[11px] sm:text-xs font-semibold text-slate-500 tracking-wide mt-0.5">WHO Growth Standards · Child Health Screening</p>
             </div>
         </div>
     </header>
@@ -121,7 +110,7 @@
                 <h2 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4">1. සැකසුම්</h2>
                 <div class="space-y-4">
                     <input type="password" id="api-key" placeholder="Enter Gemini Key" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-base">
-                    <select id="gender" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-base font-medium">
+                    <select id="gender" onchange="populateTableAndDropdown(); updateCharts();" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-base font-medium">
                         <option value="boys">👦 පිරිමි ළමුන් (Boys)</option>
                         <option value="girls">👧 ගැහැණු ළමුන් (Girls)</option>
                     </select>
@@ -274,13 +263,19 @@
             </div>
         </div>
 
+        <div id="summary-stats" class="hidden flex flex-wrap gap-2"></div>
+
         <div class="app-card rounded-2xl overflow-hidden">
-            <div class="p-5 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+            <div class="p-5 border-b border-slate-100 bg-slate-50 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                 <div>
                     <h2 class="text-sm font-bold text-slate-500 uppercase tracking-wider">4. විශ්ලේෂිත දත්ත</h2>
-                    <p class="text-[11px] text-emerald-400/70 mt-1">✏️ DOB, Height & Weight columns are editable - click a value to correct OCR mistakes, it recalculates instantly.</p>
+                    <p class="text-[11px] text-emerald-400/70 mt-1">✏️ DOB, Height & Weight columns are editable - click a value to correct OCR mistakes, it recalculates instantly. A ⚠ marks a value that looks unusual for the child's age - please double-check it.</p>
                 </div>
-                <span id="record-count" class="bg-blue-100 text-blue-700 text-xs font-extrabold px-3 py-1 rounded-full">0</span>
+                <div class="flex items-center gap-2 shrink-0">
+                    <button onclick="exportToCSV()" class="bg-blue-100 text-blue-700 text-xs font-bold px-3 py-2 rounded-lg hover:bg-blue-200 transition-all">⬇ Export CSV</button>
+                    <button onclick="clearAllData()" class="bg-red-100 text-red-600 text-xs font-bold px-3 py-2 rounded-lg hover:bg-red-200 transition-all">🗑 Clear All</button>
+                    <span id="record-count" class="bg-blue-100 text-blue-700 text-xs font-extrabold px-3 py-1 rounded-full">0</span>
+                </div>
             </div>
             <div class="overflow-x-auto pb-4">
                 <table class="w-full text-sm text-left text-slate-600 min-w-[900px]">
@@ -297,10 +292,11 @@
                             <th class="px-4 py-3 font-bold text-center border-l border-slate-200 bg-blue-50/50">Target Height</th>
                             <th class="px-4 py-3 font-bold text-center bg-blue-50/50">Target Weight</th>
                             <th class="px-4 py-3 font-bold text-center bg-blue-50/50">Action</th>
+                            <th class="px-2 py-3 font-bold text-center"></th>
                         </tr>
                     </thead>
                     <tbody id="data-table-body" class="divide-y divide-slate-100">
-                        <tr><td colspan="11" class="px-6 py-12 text-center text-slate-400 font-medium">No data available yet.</td></tr>
+                        <tr><td colspan="12" class="px-6 py-12 text-center text-slate-400 font-medium">No data available yet.</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -334,11 +330,11 @@
         }
         setAnalysisMode('accurate');
 
-        // Dark "hacker terminal" theme defaults for Chart.js (must run before any chart is created)
+        // Light-theme defaults for Chart.js (must run before any chart is created)
         if (typeof Chart !== 'undefined') {
-            Chart.defaults.color = '#a7f3d0';
-            Chart.defaults.borderColor = 'rgba(57,255,136,.12)';
-            Chart.defaults.font.family = "'JetBrains Mono', monospace";
+            Chart.defaults.color = '#52645e';
+            Chart.defaults.borderColor = 'rgba(22,35,31,.08)';
+            Chart.defaults.font.family = "'Plus Jakarta Sans', sans-serif";
         }
 
         function toggleFullScreen(containerId, chartInstance) {
@@ -513,6 +509,25 @@
             return { label: 'Normal', cls: 'badge-normal' };
         }
 
+        // Catches the classic OCR slips that a pure range-check on BMI can't - e.g. "13.5"
+        // misread as "135" (decimal point dropped), or a swapped height/weight pair. These
+        // don't just fail silently: a height of 135cm entered as weight produces a BMI of
+        // 4000+, or if swapped, an "impossible" BMI that still parses and gets classified.
+        // Loose bounds by design (this WHO table covers ages 5-19) - the goal is to catch
+        // obvious digit errors, not to second-guess a real but unusual measurement.
+        function checkPlausibility(heightCm, weightKg) {
+            const issues = [];
+            if (heightCm !== null && heightCm !== undefined && heightCm !== '') {
+                const h = parseFloat(heightCm);
+                if (!isNaN(h) && (h < 70 || h > 210)) issues.push('height looks off');
+            }
+            if (weightKg !== null && weightKg !== undefined && weightKg !== '') {
+                const w = parseFloat(weightKg);
+                if (!isNaN(w) && (w < 10 || w > 120)) issues.push('weight looks off');
+            }
+            return issues;
+        }
+
         // A row where serial_no, name, dob, height AND weight are ALL blank means
         // nothing was written for that student that day -> treat as Absent.
         function isAbsentRecord(item) {
@@ -618,6 +633,21 @@
 
             const prompt = `Extract every row from this sheet into a valid JSON array only, one object per printed row (top to bottom, in order).\n\nKeys required for every row: "serial_no" (String), "name" (String), "dob" (String in YYYY-MM-DD format), "height_cm" (Number), "weight_kg" (Number).\n\nPriority: "serial_no" and "dob" must both be read with maximum accuracy - double-check every digit against the handwriting before finalizing. A wrong "dob" throws off the calculated age and pushes the student's data point off the growth chart entirely, so treat each digit of the date as carefully as the serial number. Work column by column for the date-of-birth field: look at ALL the dates in that column together first to learn this writer's personal shapes for each digit (0-9), then read each individual date using that reference - this resolves most ambiguous digits (e.g. 1 vs 7, 0 vs 6, 3 vs 8, 5 vs 6) far more reliably than reading each date in isolation. If a specific digit is still genuinely illegible after this cross-check, leave that row's "dob" as an empty string rather than guessing - a blank is safer than a wrong date. For "name", a quick best-effort reading is fine, do not over-analyze handwriting style.\n\n${dateInstruction}\n\n${heightInstruction}\n${weightInstruction}\n\nDo NOT skip or merge blank rows. This is critical: the number of objects in your output array MUST exactly equal the number of printed/ruled rows in the register, in the same top-to-bottom order - even if some rows have no handwriting at all. If a row's serial number is printed but nothing else is written, still output an object for it with empty string / null values. Never let one row's data shift into another row's position - each object must correspond to exactly one physical row on the paper. Do not add markdown, explanations, or extra keys. If a value cannot be read, use an empty string for serial_no/name/dob and null for height_cm/weight_kg.`;
 
+            // gemini-3.7-flash rejects thinkingLevel "minimal" outright (its lowest
+            // supported tier is "low"), so the level has to be picked per-model rather
+            // than fixed once - otherwise a fallback onto 3.7-flash in Fast mode always
+            // errors out instead of actually retrying.
+            function thinkingLevelFor(model) {
+                if (analysisMode !== 'fast') return 'low';
+                return model === 'gemini-3.7-flash' ? 'low' : 'minimal';
+            }
+
+            // A full class register can easily be 40-60 rows; at ~35-45 tokens/row of
+            // JSON that can exceed a few thousand output tokens, so a low cap risks
+            // silently truncating the response mid-array (-> JSON.parse failure on the
+            // very data we most need). All these models allow up to 65536.
+            const MAX_OUTPUT_TOKENS = 16384;
+
             // Updated to send dynamic MIME type (image or application/pdf)
             const requestBody = {
                 contents: [{
@@ -628,10 +658,7 @@
                 }],
                 generationConfig: {
                     responseMimeType: "application/json",
-                    // Extraction is a simple, structured task - turning off/limiting the
-                    // model's "thinking" step removes the biggest source of delay.
-                    thinkingConfig: { thinkingLevel: analysisMode === 'fast' ? "minimal" : "low" },
-                    maxOutputTokens: 4096
+                    maxOutputTokens: MAX_OUTPUT_TOKENS
                 }
             };
 
@@ -655,9 +682,11 @@
                             const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
                             let response;
                             try {
+                                const attemptBody = JSON.parse(JSON.stringify(requestBody));
+                                attemptBody.generationConfig.thinkingConfig = { thinkingLevel: thinkingLevelFor(model) };
                                 response = await fetch(
                                     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
-                                    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(requestBody), signal: controller.signal }
+                                    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(attemptBody), signal: controller.signal }
                                 );
                             } finally {
                                 clearTimeout(timeoutId);
@@ -675,12 +704,23 @@
                             }
 
                             const data = await response.json();
+                            const finishReason = data?.candidates?.[0]?.finishReason;
                             const responseText = data?.candidates?.[0]?.content?.parts?.map(part => part?.text || '').join('').replace(/```json/gi, '').replace(/```/g, '').trim();
 
                             if (!responseText) throw new Error('Gemini returned an empty response.');
-                            
+
                             let parsed;
-                            try { parsed = JSON.parse(responseText); } catch (e) { throw new Error('Invalid JSON returned.'); }
+                            try {
+                                parsed = JSON.parse(responseText);
+                            } catch (e) {
+                                // A response cut off by the output-token limit is the one JSON
+                                // failure worth calling out specifically, since "retry the same
+                                // request" won't fix it - the fix is a smaller upload/fewer rows.
+                                if (finishReason === 'MAX_TOKENS') {
+                                    throw new Error('The response was cut off before finishing (too many rows/too much handwriting for one request). Try splitting the register into two photos.');
+                                }
+                                throw new Error('Invalid JSON returned.');
+                            }
                             if (!Array.isArray(parsed)) throw new Error('Unexpected data format returned.');
 
                             stopProgressCreep();
@@ -726,6 +766,130 @@
             updateCharts();
         }
 
+        function deleteRecord(index) {
+            extractedGlobalData.splice(index, 1);
+            populateTableAndDropdown();
+            updateCharts();
+        }
+
+        function clearAllData() {
+            if (extractedGlobalData.length === 0) return;
+            if (!confirm(`Remove all ${extractedGlobalData.length} record(s)? This can't be undone.`)) return;
+            extractedGlobalData = [];
+            populateTableAndDropdown();
+            updateCharts();
+            document.getElementById('analytics-section').classList.add('hidden');
+        }
+
+        // Quick CSV export so a teacher/health worker can hand the results off to Excel,
+        // print them, or attach them to a report without retyping anything.
+        function exportToCSV() {
+            if (extractedGlobalData.length === 0) { alert('No data to export yet.'); return; }
+            const gender = document.getElementById('gender').value;
+            const header = ['No.', 'Name', 'DOB', 'Age (Y.M)', 'Height (cm)', 'Weight (kg)', 'BMI', 'HFA Status', 'BMI Status'];
+            const rows = [header];
+            extractedGlobalData.forEach(item => {
+                if (isAbsentRecord(item)) { rows.push([item.serial_no || '', '(absent)', '', '', '', '', '', '', '']); return; }
+                const ageMonths = calculateAgeInMonths(item.dob);
+                const ageFormatted = ageMonths !== null ? `${Math.floor(ageMonths/12)}.${ageMonths%12}` : '';
+                let bmi = '', hfaLabel = '', bmiLabel = '';
+                if (item.height_cm && item.weight_kg && ageMonths !== null) {
+                    const heightM = parseFloat(item.height_cm) / 100;
+                    bmi = (parseFloat(item.weight_kg) / (heightM * heightM)).toFixed(2);
+                    const bmiRef = findClosestAgeData(whoData.bmi[gender], ageMonths);
+                    const hfaRef = findClosestAgeData(whoData.hfa[gender], ageMonths);
+                    hfaLabel = classifyHFA(parseFloat(item.height_cm), hfaRef).label;
+                    bmiLabel = classifyBMI(parseFloat(bmi), bmiRef).label;
+                }
+                rows.push([item.serial_no || '', item.name || '', item.dob || '', ageFormatted, item.height_cm ?? '', item.weight_kg ?? '', bmi, hfaLabel, bmiLabel]);
+            });
+            const csv = rows.map(r => r.map(cell => {
+                const s = String(cell);
+                return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+            }).join(',')).join('\r\n');
+            const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `SMI_Pro_export_${new Date().toISOString().slice(0,10)}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        // Tallies each classification across the whole class so a health worker gets an
+        // at-a-glance summary instead of having to scan every row of the table.
+        function updateSummaryStats() {
+            const bar = document.getElementById('summary-stats');
+            if (!bar) return;
+            const gender = document.getElementById('gender').value;
+            const counts = { 'Severe Wasting': 0, 'Wasting': 0, 'Overweight': 0, 'Obesity': 0, 'Stunting (<-2SD)': 0, 'Severe Stunt (<-3SD)': 0, evaluated: 0 };
+            extractedGlobalData.forEach(item => {
+                if (isAbsentRecord(item)) return;
+                const ageMonths = calculateAgeInMonths(item.dob);
+                if (!(item.height_cm && item.weight_kg && ageMonths !== null)) return;
+                const heightM = parseFloat(item.height_cm) / 100;
+                const bmi = parseFloat(item.weight_kg) / (heightM * heightM);
+                const bmiRef = findClosestAgeData(whoData.bmi[gender], ageMonths);
+                const hfaRef = findClosestAgeData(whoData.hfa[gender], ageMonths);
+                const bmiLabel = classifyBMI(bmi, bmiRef).label;
+                const hfaLabel = classifyHFA(parseFloat(item.height_cm), hfaRef).label;
+                if (counts.hasOwnProperty(bmiLabel)) counts[bmiLabel]++;
+                if (counts.hasOwnProperty(hfaLabel)) counts[hfaLabel]++;
+                counts.evaluated++;
+            });
+            if (counts.evaluated === 0) { bar.classList.add('hidden'); return; }
+            bar.classList.remove('hidden');
+            const cards = [
+                ['Evaluated', counts.evaluated, 'text-cyan-300'],
+                ['Severe Wasting', counts['Severe Wasting'], 'text-red-400'],
+                ['Wasting', counts['Wasting'], 'text-orange-300'],
+                ['Overweight', counts['Overweight'], 'text-yellow-300'],
+                ['Obesity', counts['Obesity'], 'text-red-400'],
+                ['Stunting', counts['Stunting (<-2SD)'], 'text-orange-300'],
+                ['Severe Stunt', counts['Severe Stunt (<-3SD)'], 'text-red-400'],
+            ];
+            bar.innerHTML = cards.map(([label, val, cls]) =>
+                `<div class="bg-black/20 border border-emerald-500/15 rounded-xl px-3 py-2 text-center min-w-[84px]">
+                    <div class="text-lg font-extrabold mono ${cls}">${val}</div>
+                    <div class="text-[9px] uppercase tracking-wide text-slate-400 mt-0.5">${label}</div>
+                </div>`
+            ).join('');
+        }
+
+        // Persist the extracted table to this browser so an accidental refresh/tab-close
+        // doesn't wipe out data that may have taken a while to scan and hand-correct.
+        // Nothing is sent anywhere - localStorage is per-browser, client-side only.
+        const AUTOSAVE_KEY = 'smipro_autosave_v1';
+        function autosave() {
+            try {
+                localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({
+                    data: extractedGlobalData,
+                    gender: document.getElementById('gender').value,
+                    savedAt: new Date().toISOString()
+                }));
+            } catch (e) { /* storage full/unavailable - fail silently, this is a convenience only */ }
+        }
+        function restoreAutosave() {
+            try {
+                const raw = localStorage.getItem(AUTOSAVE_KEY);
+                if (!raw) return;
+                const saved = JSON.parse(raw);
+                if (!saved || !Array.isArray(saved.data) || saved.data.length === 0) return;
+                if (!confirm(`Restore ${saved.data.length} record(s) from your last session (saved ${new Date(saved.savedAt).toLocaleString()})?`)) {
+                    localStorage.removeItem(AUTOSAVE_KEY);
+                    return;
+                }
+                extractedGlobalData = saved.data;
+                if (saved.gender) document.getElementById('gender').value = saved.gender;
+                populateTableAndDropdown();
+                updateCharts();
+                document.getElementById('analytics-section').classList.remove('hidden');
+            } catch (e) { /* corrupted autosave - ignore rather than block the app */ }
+        }
+        window.addEventListener('DOMContentLoaded', restoreAutosave);
+
         function populateTableAndDropdown() {
             const tbody = document.getElementById('data-table-body');
             const filterDropdown = document.getElementById('student-filter');
@@ -750,6 +914,9 @@
                         <td class="px-4 py-3 text-center text-xs text-slate-400 border-l border-slate-200 bg-blue-50/30">-</td>
                         <td class="px-4 py-3 text-center text-xs text-slate-400 bg-blue-50/30">-</td>
                         <td class="px-4 py-3 text-center bg-blue-50/30">-</td>
+                        <td class="px-2 py-3 text-center">
+                            <button onclick="deleteRecord(${index})" title="Delete this row" class="text-slate-400 hover:text-red-400 font-bold text-sm px-1">✕</button>
+                        </td>
                     `;
                     tbody.appendChild(tr);
                     return; // skip BMI/HFA computation and dropdown entry for absent rows
@@ -765,6 +932,8 @@
                 let targetWeightTxt = '-';
                 let actionTxt = '-';
                 
+                const plausibilityIssues = checkPlausibility(item.height_cm, item.weight_kg);
+
                 if(item.height_cm && item.weight_kg && ageMonths !== null) {
                     const currentHeight = parseFloat(item.height_cm);
                     const currentWeight = parseFloat(item.weight_kg);
@@ -824,25 +993,32 @@
                     <td class="px-2 py-2 text-center">
                         <input type="number" step="0.1" inputmode="decimal" value="${item.height_cm ?? ''}" placeholder="-"
                             onchange="editRecordField(${index}, 'height_cm', this.value)"
-                            class="w-16 text-center bg-transparent border-b border-dashed border-emerald-500/40 focus:border-emerald-400 focus:bg-emerald-500/10 outline-none rounded px-1 py-1 mono" title="Click to correct this value">
+                            class="w-16 text-center bg-transparent border-b ${plausibilityIssues.includes('height looks off') ? 'border-amber-400' : 'border-dashed border-emerald-500/40'} focus:border-emerald-400 focus:bg-emerald-500/10 outline-none rounded px-1 py-1 mono"
+                            title="${plausibilityIssues.includes('height looks off') ? '⚠ This height looks unusual for the age - double check against the handwriting' : 'Click to correct this value'}">
                     </td>
                     <td class="px-2 py-2 text-center">
                         <input type="number" step="0.1" inputmode="decimal" value="${item.weight_kg ?? ''}" placeholder="-"
                             onchange="editRecordField(${index}, 'weight_kg', this.value)"
-                            class="w-16 text-center bg-transparent border-b border-dashed border-emerald-500/40 focus:border-emerald-400 focus:bg-emerald-500/10 outline-none rounded px-1 py-1 mono" title="Click to correct this value">
+                            class="w-16 text-center bg-transparent border-b ${plausibilityIssues.includes('weight looks off') ? 'border-amber-400' : 'border-dashed border-emerald-500/40'} focus:border-emerald-400 focus:bg-emerald-500/10 outline-none rounded px-1 py-1 mono"
+                            title="${plausibilityIssues.includes('weight looks off') ? '⚠ This weight looks unusual for the age - double check against the handwriting' : 'Click to correct this value'}">
                     </td>
-                    <td class="px-4 py-3 text-center font-extrabold text-slate-800">${bmi}</td>
+                    <td class="px-4 py-3 text-center font-extrabold text-slate-800">${bmi}${plausibilityIssues.length ? ' <span title="Value(s) look unusual - please verify against the original sheet" class="text-amber-400">⚠</span>' : ''}</td>
                     <td class="px-4 py-3 text-center"><span class="badge ${hfaStatus.cls}">${hfaStatus.label}</span></td>
                     <td class="px-4 py-3 text-center"><span class="badge ${bmiStatus.cls}">${bmiStatus.label}</span></td>
                     <td class="px-4 py-3 text-center text-xs font-semibold text-slate-600 border-l border-slate-200 bg-blue-50/30 whitespace-nowrap">${targetHeightTxt}</td>
                     <td class="px-4 py-3 text-center text-xs font-semibold text-slate-600 bg-blue-50/30 whitespace-nowrap">${targetWeightTxt}</td>
                     <td class="px-4 py-3 text-center bg-blue-50/30">${actionTxt}</td>
+                    <td class="px-2 py-3 text-center">
+                        <button onclick="deleteRecord(${index})" title="Delete this row" class="text-slate-400 hover:text-red-400 font-bold text-sm px-1">✕</button>
+                    </td>
                 `;
                 tbody.appendChild(tr);
             });
             document.getElementById('record-count').innerText = absentCount > 0
                 ? `${extractedGlobalData.length} (${absentCount} absent)`
                 : extractedGlobalData.length;
+            updateSummaryStats();
+            autosave();
         }
 
         function updateCharts() {
